@@ -24,6 +24,8 @@ function Convert-ExcelJsonWorkbook {
         [Parameter(Mandatory = $true)]
         [object[]]$SheetDefinitions,
 
+        [string[]]$TargetSiteNumbers = @(),
+
         [string]$RulesPath = "",
 
         [string]$MappingsPath = ""
@@ -147,7 +149,24 @@ function Convert-ExcelJsonWorkbook {
             }
         }
 
-        $siteNumbers = @($bodiesBySite.Keys | Sort-Object { [int]$_ })
+        $availableSiteNumbers = @($bodiesBySite.Keys | ForEach-Object { [string]$_ })
+        if (@($TargetSiteNumbers).Count -gt 0) {
+            $siteNumbers = @(
+                $TargetSiteNumbers |
+                ForEach-Object { [string]$_ } |
+                Sort-Object { [int]$_ } -Unique
+            )
+            $missingSiteNumbers = @($siteNumbers | Where-Object { $_ -notin $availableSiteNumbers })
+            if ($missingSiteNumbers.Count -gt 0) {
+                throw "Excelに対象拠点のManagementNoがありません: $($missingSiteNumbers -join ', ')"
+            }
+            Write-Host "[対象] ManagementNo $($siteNumbers -join ', ')"
+        }
+        else {
+            $siteNumbers = @($availableSiteNumbers | Sort-Object { [int]$_ })
+            Write-Host "[対象] 全拠点"
+        }
+
         foreach ($siteNo in $siteNumbers) {
             [void](ConvertTo-ApiValues `
                 -Body $bodiesBySite[$siteNo] `

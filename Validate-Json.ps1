@@ -4,10 +4,12 @@ param(
     [string]$InputDir = "",
     [string]$ReportPath = "",
     [string]$RulesPath = "",
+    [string]$SiteSelection = "",
     [switch]$FailOnError
 )
 
 $ErrorActionPreference = "Stop"
+Import-Module (Join-Path $PSScriptRoot "modules\SiteSelection.psm1") -Force
 if ([string]::IsNullOrWhiteSpace($InputDir)) {
     $InputDir = Join-Path $PSScriptRoot "output"
 }
@@ -251,7 +253,21 @@ $ruleDocument = Get-Content -LiteralPath $RulesPath -Raw -Encoding UTF8 | Conver
 $rules = @($ruleDocument.rules)
 $allowed = @{}
 foreach ($rule in $rules) { $allowed[[string]$rule.path] = $true }
-$jsonFiles = @(Get-ChildItem -LiteralPath $InputDir -Filter "*.json" -File | Sort-Object Name)
+$targetSiteNumbers = @(ConvertFrom-SiteSelection -Selection $SiteSelection)
+if ($targetSiteNumbers.Count -gt 0) {
+    $jsonFiles = @(
+        foreach ($siteNo in $targetSiteNumbers) {
+            $filePath = Join-Path $InputDir ("terminal_{0}.json" -f $siteNo)
+            if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+                throw "対象拠点のJSONがありません: $filePath"
+            }
+            Get-Item -LiteralPath $filePath
+        }
+    )
+}
+else {
+    $jsonFiles = @(Get-ChildItem -LiteralPath $InputDir -Filter "*.json" -File | Sort-Object Name)
+}
 
 foreach ($jsonFile in $jsonFiles) {
     $before = $issues.Count
@@ -284,7 +300,7 @@ $issueRows = foreach ($issue in $issues) {
 if (@($fileRows).Count -eq 0) { $fileRows = "<tr><td colspan='4'>JSONファイルがありません。</td></tr>" }
 if (@($issueRows).Count -eq 0) { $issueRows = "<tr><td colspan='6'>問題は見つかりませんでした。</td></tr>" }
 
-$sourceUrl = ConvertTo-HtmlEncoded $ruleDocument.sourceUrl
+
 $generatedAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $html = @"
 <!doctype html><html lang="ja"><head><meta charset="utf-8">
@@ -303,7 +319,6 @@ main{max-width:1400px;margin:auto;padding:32px 24px}h1{margin:0}.meta{color:#657
 <div class="cards"><div class="card"><div class="number">$($jsonFiles.Count)</div><div class="label">JSONファイル</div></div><div class="card"><div class="number">$errorCount</div><div class="label">エラー</div></div><div class="card"><div class="number">$warningCount</div><div class="label">警告</div></div></div>
 <section><h2>ファイル別結果</h2><table><thead><tr><th>ファイル</th><th>結果</th><th>エラー</th><th>警告</th></tr></thead><tbody>$(@($fileRows)-join[Environment]::NewLine)</tbody></table></section>
 <section><h2>検出内容</h2><table><thead><tr><th>重要度</th><th>ファイル</th><th>JSONPath</th><th>値</th><th>内容</th><th>ルール</th></tr></thead><tbody>$(@($issueRows)-join[Environment]::NewLine)</tbody></table></section>
-<section><h2>検証範囲</h2><div class="note">公式OpenAPIの必須、型、正規表現、列挙値、文字数、配列件数、日付形式を検証します。住所の半角スペースとモバイル担当者名の全角スペースも確認します。条件付き必須や営業日判定は含みません。</div><p><a href="$sourceUrl">$sourceUrl</a></p></section>
 </main></body></html>
 "@
 

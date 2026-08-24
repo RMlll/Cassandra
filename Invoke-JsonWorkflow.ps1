@@ -5,7 +5,8 @@ param(
     [string]$Mode = "All",
     [string]$ExcelPath = "",
     [string]$OutputDir = "",
-    [string]$ReportPath = ""
+    [string]$ReportPath = "",
+    [string]$SiteSelection = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,7 +36,10 @@ if ($Mode -in @("Generate", "All")) {
     }
 
     Write-Host "[開始] JSON生成"
-    & $mainScript -ExcelPath $excelItem.FullName -OutputDir $OutputDir
+    if (-not [string]::IsNullOrWhiteSpace($SiteSelection) -and $SiteSelection.Trim() -ine "ALL") {
+        Write-Host "[注意] 選択外の既存JSONファイルは削除しません。"
+    }
+    & $mainScript -ExcelPath $excelItem.FullName -OutputDir $OutputDir -SiteSelection $SiteSelection
     Write-Host "[完了] JSON生成"
 }
 
@@ -48,7 +52,6 @@ if ($Mode -in @("Validate", "All")) {
     }
 
     Write-Host "[開始] JSON検証"
-    & $validatorScript -InputDir $OutputDir -ReportPath $ReportPath
+    & $validatorScript -InputDir $OutputDir -ReportPath $ReportPath -SiteSelection $SiteSelection
     Write-Host "[完了] JSON検証"
 }
-

@@ -6,11 +6,17 @@
 #>
 param(
     [string]$ExcelPath = (Join-Path $PSScriptRoot "param_v7.0.xlsx"),
-    [string]$OutputDir = (Join-Path $PSScriptRoot "output")
+    [string]$OutputDir = (Join-Path $PSScriptRoot "output"),
+    [string]$SiteSelection = ""
 )
 
 $ErrorActionPreference = "Stop"
 
+# SiteSelection:
+#   空欄またはALL = 全拠点
+#   1             = ManagementNo 1のみ
+#   1-10, 50-51   = 範囲と複数指定（重複は自動で除外）
+#
 # Layout:
 #   Horizontal = 1行を1拠点として読む
 #   Vertical   = ManagementNoごとの複数行を読む
@@ -60,19 +66,24 @@ $ErrorActionPreference = "Stop"
 # 追加した各設定は、末尾の設定を除いて } の後ろにカンマが必要。
 $sheetDefinitions = @(
     @{
-        Name = "API"
+        Name = ""
         Layout = "Horizontal"
         DisplayedTextPaths = @(
             "deliveryDate"
         )
     },
     @{
-        Name = "盾形"
+        Name = ""
         Layout = "Vertical"
         OrderColumn = "Inner_ManageNo"
     },
     @{
-        Name = "モバイル情報"
+        Name = ""
+        Layout = "Vertical"
+        OrderColumn = "Inner_ManageNo"
+    },
+    @{
+        Name = ""
         Layout = "KeyValue"
         JsonPathColumn = "JSONPath"
         ValueColumn = "Value"
@@ -80,20 +91,23 @@ $sheetDefinitions = @(
             "mobile.picDateOfBirth"
         )
         ApplyWhenAny = @(
-            @{ Path = "primaryCircuitType"; Equals = "ワイヤレス" },
-            @{ Path = "secondaryCircuitType"; Equals = "ワイヤレス" }
+            @{ Path = ""; Equals = "" },
+            @{ Path = ""; Equals = "" }
         )
     }
 )
 
 Import-Module (Join-Path $PSScriptRoot "modules\ExcelJson.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "modules\SiteSelection.psm1") -Force
 
 $rulesPath = Join-Path $PSScriptRoot "rules\TerminalCreateRules.json"
 $mappingsPath = Join-Path $PSScriptRoot "rules\TerminalValueMappings.json"
+$targetSiteNumbers = @(ConvertFrom-SiteSelection -Selection $SiteSelection)
 
 Convert-ExcelJsonWorkbook `
     -ExcelPath $ExcelPath `
     -OutputDir $OutputDir `
     -SheetDefinitions $sheetDefinitions `
+    -TargetSiteNumbers $targetSiteNumbers `
     -RulesPath $rulesPath `
     -MappingsPath $mappingsPath
