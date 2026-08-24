@@ -219,7 +219,12 @@ function Read-VerticalSheet(
 
         for ($row=$layout.DataStartRow; $row -le $layout.LastRow; $row++) {
             $siteNo=([string](Get-WorksheetDataValue $data $row $layout.ManagementColumn)).Trim()
-            if ($siteNo -notmatch '^[1-9]\d*$') { continue }
+            if ($siteNo -ieq "ALL") {
+                $siteNo="ALL"
+            }
+            elseif ($siteNo -notmatch '^[1-9]\d*$') {
+                continue
+            }
 
             $order=$null
             if ($orderColumns.Count -eq 1) {
@@ -304,4 +309,3 @@ Export-ModuleMember -Function @(
     "Read-VerticalSheet",
     "Read-KeyValueSheet"
 )
-

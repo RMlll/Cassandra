@@ -109,6 +109,11 @@ function Convert-ExcelJsonWorkbook {
                         -OrderColumn $orderColumn `
                         -ExcludedPaths $excludedPaths `
                         -DisplayedTextPaths $displayedTextPaths
+
+                    $sheetAssignments = Expand-AllSiteAssignments `
+                        -SheetAssignments $sheetAssignments `
+                        -BodiesBySite $bodiesBySite `
+                        -WorksheetName $sheetName
                 }
                 else {
                     $jsonPathColumn = [string]$definition.JsonPathColumn

@@ -88,6 +88,67 @@ function Convert-KeyValueAssignmentsToSites {
     return $assignmentsBySite
 }
 
+function Expand-AllSiteAssignments {
+    param(
+        [hashtable]$SheetAssignments,
+        [hashtable]$BodiesBySite,
+        [string]$WorksheetName
+    )
+
+    if (-not $SheetAssignments.ContainsKey("ALL")) {
+        return $SheetAssignments
+    }
+
+    $targetSiteNumbers = @(
+        @($BodiesBySite.Keys) +
+        @($SheetAssignments.Keys | Where-Object { [string]$_ -match '^[1-9]\d*$' }) |
+        ForEach-Object { [string]$_ } |
+        Sort-Object -Unique
+    )
+    if ($targetSiteNumbers.Count -eq 0) {
+        throw "${WorksheetName}シートのManagementNo=ALLを展開できません。先にManagementNoを持つHorizontalまたはVerticalシートを指定してください。"
+    }
+
+    $allDefaults = New-Object System.Collections.ArrayList
+    $allPaths = @{}
+    foreach ($assignment in $SheetAssignments["ALL"]) {
+        if ($allPaths.ContainsKey($assignment.Path)) {
+            $previous = $allPaths[$assignment.Path]
+            if ($previous.Value -ne $assignment.Value) {
+                throw ("{0}シートのManagementNo=ALLでJSONPath '{1}' が重複しています。" +
+                    " {2}行目: {3} / {4}行目: {5}") -f
+                    $WorksheetName,
+                    $assignment.Path,
+                    $previous.ExcelRow,
+                    $previous.Value,
+                    $assignment.ExcelRow,
+                    $assignment.Value
+            }
+            continue
+        }
+        $allPaths[$assignment.Path] = $assignment
+        [void]$allDefaults.Add($assignment)
+    }
+
+    $expanded = @{}
+    foreach ($siteNo in $targetSiteNumbers) {
+        if ($SheetAssignments.ContainsKey($siteNo)) {
+            $expanded[$siteNo] = New-Object System.Collections.ArrayList
+            foreach ($assignment in $SheetAssignments[$siteNo]) {
+                [void]$expanded[$siteNo].Add($assignment)
+            }
+            continue
+        }
+
+        $expanded[$siteNo] = New-Object System.Collections.ArrayList
+        foreach ($assignment in $allDefaults) {
+            [void]$expanded[$siteNo].Add($assignment)
+        }
+    }
+
+    return $expanded
+}
+
 function Set-JsonPath {
     param(
         [System.Collections.IDictionary]$Root,
@@ -242,8 +303,8 @@ function ConvertTo-IndentedJson {
 
 Export-ModuleMember -Function @(
     "Convert-KeyValueAssignmentsToSites",
+    "Expand-AllSiteAssignments",
     "Add-SheetAssignments",
     "Assert-NoArrayHoles",
     "ConvertTo-IndentedJson"
 )
-

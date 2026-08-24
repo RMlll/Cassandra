@@ -17,6 +17,9 @@ $ErrorActionPreference = "Stop"
 #   KeyValue   = JSONPath列とValue列の固定値を縦方向に読む
 #
 # Verticalでは、OrderColumnの1始まりの番号を最初の [] の配列番号に使う。
+# ManagementNoへALLと記載した行は、生成対象の全ManagementNoへ適用する。
+# ALLを使用するVerticalシートは、ManagementNoを作るシートより後ろへ記載する。
+# 同じVerticalシート内に個別ManagementNoがある拠点は、ALLを使わず個別行だけを使う。
 #
 # 横型シートを追加する例:
 #   @{
